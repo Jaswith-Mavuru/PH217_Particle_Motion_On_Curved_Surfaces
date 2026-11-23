@@ -252,20 +252,16 @@
         </div>
     </div>
     <script>
-        // Physics constants & conversions
         const DEG_TO_RAD = Math.PI / 180;
         const RAD_TO_DEG = 180 / Math.PI;
         const CONE_HEIGHT = 12;
-
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
-
         let surfaceType = 'cone';
         let params = {}, sim = {}, trajectory = [];
         let isRunning = true, timeScale = 1;
         let rotX = 0.7, rotY = 0.45;
 
-        // Slider configs: [key, label, unit, min, max, step, default]
         const paramConfigs = {
             cone: [
                 ['alpha', 'Half-angle α', '°', 10, 80, 1, 30],
@@ -290,7 +286,6 @@
             ]
         };
 
-        // Presets for interesting trajectories
         const presets = {
             cone: {
                 'Fall to apex': { alpha: 30, r0: 6, vr: -1.5, vt: 0 },
@@ -332,16 +327,12 @@
         function resetSimulation() {
             trajectory = [];
             sim = { t: 0, pauseHold: 0, wireframe: [], greatCircle: null, maxDt: 0.02 };
-
             if (surfaceType === 'cone') {
                 const alphaRad = params.alpha * DEG_TO_RAD;
                 const sinA = Math.sin(alphaRad), cosA = Math.cos(alphaRad);
                 const vSq = params.vr * params.vr + params.vt * params.vt;
-
                 sim.viewBound = Math.hypot(CONE_HEIGHT * cosA / 2, CONE_HEIGHT * sinA) * 1.05;
                 sim.zOffset = CONE_HEIGHT * cosA / 2;
-
-                // Geodesic on unrolled cone: straight line in polar coordinates (r, psi)
                 sim.getPosition = () => {
                     const flatX = params.r0 + params.vr * sim.t;
                     const flatY = params.vt * sim.t;
@@ -352,7 +343,6 @@
                     return [r * sinA * Math.cos(phi), r * sinA * Math.sin(phi), r * cosA];
                 };
                 sim.stepPhysics = () => {};
-
                 for (let i = 0; i < 12; i++) {
                     const phi = i * 30 * DEG_TO_RAD;
                     sim.wireframe.push([[0, 0, 0], [CONE_HEIGHT * sinA * Math.cos(phi), CONE_HEIGHT * sinA * Math.sin(phi), CONE_HEIGHT * cosA]]);
@@ -369,13 +359,7 @@
                 if (!vSq) note = 'At rest: stays at initial position.';
                 else if (params.vt === 0) note = params.vr < 0 ? 'Pure radial inward: runs into apex.' : 'Pure radial outward: escapes along generator.';
                 else if (params.vr < 0) note = 'Inward flight turns at centrifugal barrier r_min, then escapes.';
-
-                sim.infoText = [
-                    'Total Energy E = ' + round(0.5 * vSq),
-                    'Angular momentum Jz = ' + round(Jz) + (params.vt === 0 ? ' (zero barrier)' : ''),
-                    'Closest approach r_min = ' + round(rMin),
-                    note
-                ];
+                sim.infoText = ['Total Energy E = ' + round(0.5 * vSq), 'Angular momentum Jz = ' + round(Jz) + (params.vt === 0 ? ' (zero barrier)' : ''), 'Closest approach r_min = ' + round(rMin), note];
                 sim.getLiveStatus = () => {
                     const phiDeg = ((sim.currentPhi * RAD_TO_DEG) % 360 + 360) % 360;
                     return 't = ' + round(sim.t, 1) + ' s   r = ' + round(sim.currentR) + '   φ = ' + round(phiDeg, 0) + '°';
@@ -394,7 +378,6 @@
                     normal[2] * unitVelocity[0] - normal[0] * unitVelocity[2],
                     normal[0] * unitVelocity[1] - normal[1] * unitVelocity[0]
                 ];
-
                 sim.viewBound = R * 1.1; sim.zOffset = 0;
                 sim.getPosition = () => {
                     const omega = params.v / R, cosW = Math.cos(omega * sim.t), sinW = Math.sin(omega * sim.t);
@@ -403,7 +386,6 @@
                     return pos;
                 };
                 sim.stepPhysics = () => {};
-
                 for (let i = 0; i < 6; i++) {
                     const p = i * 30 * DEG_TO_RAD;
                     sim.wireframe.push(generateCircle(angle => [R * Math.sin(angle) * Math.cos(p), R * Math.sin(angle) * Math.sin(p), R * Math.cos(angle)]));
@@ -417,7 +399,6 @@
                 sim.equationText = 'θ̈ = sinθ cosθ φ̇² ,  L = r × p = const';
                 const inclination = Math.acos(Math.min(1, Math.abs(L[2]))) * RAD_TO_DEG;
                 const period = params.v > 0 ? 2 * Math.PI * R / params.v : 0;
-
                 sim.infoText = [
                     'Orbit plane tilt = ' + round(inclination, 1) + '° (angle between L and z-axis)',
                     'Angular momentum |L| = ' + round(R * params.v) + '   L̂ = (' + L.map(x => round(x)).join(', ') + ')',
@@ -437,26 +418,20 @@
                 const R = params.R, a = params.a;
                 const theta0 = params.theta * DEG_TO_RAD, phi0 = params.phi * DEG_TO_RAD;
                 const thetaDot0 = params.thetaDot, phiDot0 = params.phiDot;
-
                 const ell = Math.pow(R + a * Math.cos(theta0), 2) * phiDot0;
                 const ellSq = ell * ell;
                 const totalEnergy = 0.5 * a * a * thetaDot0 * thetaDot0 + ellSq / (2 * Math.pow(R + a * Math.cos(theta0), 2));
                 const vMin = ellSq / (2 * Math.pow(R + a, 2)), vMax = ellSq / (2 * Math.pow(R - a, 2));
-
                 sim.viewBound = (R + a) * 1.08; sim.zOffset = 0; sim.maxDt = 0.004;
-                sim.state = [theta0, thetaDot0, phi0]; // [θ, θ̇, φ]
-
+                sim.state = [theta0, thetaDot0, phi0];
                 const thetaAccel = th => -ellSq * Math.sin(th) / (a * Math.pow(R + a * Math.cos(th), 3));
                 const phiRate = th => ell / Math.pow(R + a * Math.cos(th), 2);
-
-                // Runge-Kutta 4th order numerical integration
                 sim.stepPhysics = dt => {
                     let [th, w, ph] = sim.state;
                     const k1_th = w, k1_w = thetaAccel(th);
                     const k2_th = w + 0.5 * dt * k1_w, k2_w = thetaAccel(th + 0.5 * dt * k1_th);
                     const k3_th = w + 0.5 * dt * k2_w, k3_w = thetaAccel(th + 0.5 * dt * k2_th);
                     const k4_th = w + dt * k3_w, k4_w = thetaAccel(th + dt * k3_th);
-
                     ph += (dt / 6) * (phiRate(th) + 2 * phiRate(th + 0.5 * dt * k1_th) + 2 * phiRate(th + 0.5 * dt * k2_th) + phiRate(th + dt * k3_th));
                     th += (dt / 6) * (k1_th + 2 * k2_th + 2 * k3_th + k4_th);
                     w += (dt / 6) * (k1_w + 2 * k2_w + 2 * k3_w + k4_w);
@@ -476,24 +451,17 @@
                     const th = j * 30 * DEG_TO_RAD;
                     sim.wireframe.push(generateCircle(angle => [(R + a * Math.cos(th)) * Math.cos(angle), (R + a * Math.cos(th)) * Math.sin(angle), a * Math.sin(th)]));
                 }
-
                 sim.equationText = 'θ̈ = −ℓ² sinθ / [a(R + a cosθ)³] ,  φ̇ = ℓ / (R + a cosθ)²';
                 let regime = 'V_min < E < V_max: Libration (oscillates between turning points around outer equator).';
                 if (Math.abs(ell) < 1e-8) regime = 'ℓ = 0: Pure meridian motion around tube.';
                 else if (totalEnergy >= vMax) regime = 'E ≥ V_max: Circulation (winds indefinitely around tube).';
-
-                sim.infoText = [
-                    'Energy E = ' + round(totalEnergy) + '   Toroidal momentum ℓ = ' + round(ell),
-                    'Potential barriers: V_min = ' + round(vMin) + ', V_max = ' + round(vMax),
-                    regime
-                ];
+                sim.infoText = ['Energy E = ' + round(totalEnergy) + '   Toroidal momentum ℓ = ' + round(ell), 'Potential barriers: V_min = ' + round(vMin) + ', V_max = ' + round(vMax), regime];
                 sim.getLiveStatus = () => {
                     const thDeg = ((sim.state[0] * RAD_TO_DEG) % 360 + 360) % 360;
                     const phDeg = ((sim.state[2] * RAD_TO_DEG) % 360 + 360) % 360;
                     return 't = ' + round(sim.t, 1) + ' s   θ = ' + round(thDeg, 0) + '°   φ = ' + round(phDeg, 0) + '°';
                 };
             }
-
             trajectory.push(sim.getPosition());
             document.getElementById('eq').textContent = sim.equationText;
             document.getElementById('info').innerHTML = sim.infoText.map(txt => '<div>' + txt + '</div>').join('');
@@ -505,15 +473,12 @@
             paramConfigs[surfaceType].forEach(([key, label, unit, minVal, maxVal, step, defaultVal]) => {
                 if (params[key] === undefined) params[key] = defaultVal;
                 if (surfaceType === 'torus' && key === 'a') maxVal = round(params.R - 0.2);
-
                 const item = document.createElement('div');
                 item.className = 's';
-                item.innerHTML = '<label>' + label + '<b id="val_' + key + '">' + round(params[key]) + unit + '</b></label>' +
-                    '<input type="range" id="param_' + key + '" min="' + minVal + '" max="' + maxVal + '" step="' + step + '" value="' + params[key] + '">';
+                item.innerHTML = '<label>' + label + '<b id="val_' + key + '">' + round(params[key]) + unit + '</b></label>' + '<input type="range" id="param_' + key + '" min="' + minVal + '" max="' + maxVal + '" step="' + step + '" value="' + params[key] + '">';
                 container.appendChild(item);
             });
 
-            // Preset buttons
             const presetContainer = document.getElementById('pre');
             presetContainer.innerHTML = '';
             const surfacePresets = presets[surfaceType];
@@ -543,10 +508,8 @@
             if (!inputId.startsWith('param_')) return;
             const key = inputId.replace('param_', '');
             params[key] = Number(e.target.value);
-
             const config = paramConfigs[surfaceType].find(item => item[0] === key);
             document.getElementById('val_' + key).textContent = round(params[key]) + config[2];
-
             if (surfaceType === 'torus' && key === 'R') {
                 const maxAllowedA = round(params.R - 0.2);
                 const aInput = document.getElementById('param_a');
@@ -559,7 +522,6 @@
             }
             resetSimulation();
         });
-
         document.getElementById('tabs').addEventListener('click', e => {
             const selected = e.target.dataset.s;
             if (!selected) return;
@@ -569,33 +531,27 @@
             createControls();
             resetSimulation();
         });
-
         document.getElementById('play').onclick = () => {
             isRunning = !isRunning;
             document.getElementById('play').textContent = isRunning ? 'Pause' : 'Play';
         };
-
         document.getElementById('rst').onclick = () => resetSimulation();
-
         document.getElementById('sp').oninput = e => {
             timeScale = Number(e.target.value);
             document.getElementById('spv').textContent = timeScale + '×';
         };
 
-        // Pointer drag for 3D rotation
         let dragStart = null;
         canvas.addEventListener('pointerdown', e => {
             dragStart = [e.clientX, e.clientY];
             canvas.setPointerCapture(e.pointerId);
         });
-
         canvas.addEventListener('pointermove', e => {
             if (!dragStart) return;
             rotX += (e.clientX - dragStart[0]) * 0.01;
             rotY = Math.max(-1.5, Math.min(1.5, rotY + (e.clientY - dragStart[1]) * 0.01));
             dragStart = [e.clientX, e.clientY];
         });
-
         canvas.addEventListener('pointerup', () => { dragStart = null; });
         canvas.addEventListener('pointercancel', () => { dragStart = null; });
 
@@ -614,23 +570,18 @@
         function renderScene() {
             const width = canvas.clientWidth, height = canvas.clientHeight;
             const dpr = window.devicePixelRatio || 1;
-
             if (canvas.width !== Math.round(width * dpr)) {
                 canvas.width = Math.round(width * dpr);
                 canvas.height = Math.round(height * dpr);
             }
-
             ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
             ctx.clearRect(0, 0, width, height);
-
             const style = getComputedStyle(document.documentElement);
             const getVar = name => style.getPropertyValue(name).trim();
-
             const scale = 0.46 * Math.min(width, height) / sim.viewBound;
             const cosRotX = Math.cos(rotX), sinRotX = Math.sin(rotX);
             const cosRotY = Math.cos(rotY), sinRotY = Math.sin(rotY);
             const zOff = sim.zOffset || 0;
-
             function project(p3d) {
                 const z = p3d[2] - zOff;
                 const xRot = p3d[0] * cosRotX - p3d[1] * sinRotX;
@@ -652,14 +603,9 @@
                 ctx.stroke();
                 ctx.globalAlpha = 1;
             }
-
-            // Wireframe & vertical axis
             sim.wireframe.forEach(wire => drawCurve(wire, getVar('--wire'), 0.5, 1));
             drawCurve([[0, 0, -sim.viewBound * 0.9 + zOff], [0, 0, sim.viewBound * 0.9 + zOff]], getVar('--wire'), 0.35, 1);
-
             if (sim.greatCircle) drawCurve(sim.greatCircle, getVar('--ac'), 0.6, 1.5);
-
-            // Trajectory path with fade
             const totalPts = trajectory.length;
             const segments = Math.min(24, totalPts - 1);
             for (let k = 0; k < segments; k++) {
@@ -668,7 +614,6 @@
                 drawCurve(trajectory.slice(a, Math.min(b + 1, totalPts)), getVar('--tr'), 0.2 + 0.8 * (k + 1) / segments, 2);
             }
 
-            // Start point ring and current position
             if (totalPts > 0) {
                 const startPt = project(trajectory[0]);
                 ctx.beginPath();
@@ -676,7 +621,6 @@
                 ctx.strokeStyle = getVar('--tr');
                 ctx.lineWidth = 2;
                 ctx.stroke();
-
                 const currentPt = project(trajectory[totalPts - 1]);
                 ctx.beginPath();
                 ctx.arc(currentPt[0], currentPt[1], 6.5, 0, 2 * Math.PI);
@@ -687,30 +631,24 @@
                 ctx.stroke();
             }
         }
-
         let lastTime = performance.now();
         function loop(now) {
             const dt = Math.min(0.05, (now - lastTime) / 1000);
             lastTime = now;
-
             if (sim.pauseHold > 0) {
                 sim.pauseHold -= dt;
                 if (sim.pauseHold <= 0) resetSimulation();
             } else if (isRunning) {
                 updatePhysics(dt * timeScale);
             }
-
             renderScene();
             document.getElementById('live').textContent = sim.getLiveStatus();
             requestAnimationFrame(loop);
         }
-
-        // Initialize simulation
         params = loadDefaultParams();
         createControls();
         resetSimulation();
         requestAnimationFrame(loop);
     </script>
 </body>
-
 </html>
